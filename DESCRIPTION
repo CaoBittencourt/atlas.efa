@@ -5,7 +5,19 @@ Version: 0.1.0
 Author: Cao Bittencourt Ferreira
 Maintainer: Cao Bittencourt Ferreira <caobittencourt@gmail.com>
 Description: This package contains a series of functions to streamline and automate most or all of Exploratory Factor Analysis (EFA) procedures.
-Depends: dplyr, tidyr, stringr, purrr, vctrs, modeest, psych, GPArotation, weights, Hmisc, stats
+Depends: 
+    dplyr,
+    tidyr,
+    stringr,
+    purrr,
+    vctrs,
+    modeest,
+    psych,
+    GPArotation,
+    weights,
+    Hmisc,
+    stats,
+    CaoBittencourtFerreira/atlas.ftools
 Remotes: github::caobittencourtferreira/atlas.ftools
 License: What license is it under?
 Encoding: UTF-8
