@@ -17,7 +17,7 @@ Depends:
     weights,
     Hmisc,
     stats,
-    CaoBittencourtFerreira/atlas.ftools
+    atlas.ftools
 Remotes: github::caobittencourtferreira/atlas.ftools
 License: What license is it under?
 Encoding: UTF-8
