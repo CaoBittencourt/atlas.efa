@@ -9,12 +9,12 @@
 #   , 'Hmisc' #Weighted variance
 #   , 'stats'
 # )
-# 
+#
 # # Activate / install packages
 # lapply(pkg, function(x)
 #   if(!require(x, character.only = T))
 #   {install.packages(x); require(x)})
-# 
+#
 # # Package citation
 # # lapply(pkg, function(x)
 # #   {citation(package = x)})
@@ -1425,6 +1425,117 @@ fun_efa_vfa <- function(
 }
 
 # [TOP ITEMS FUNCTIONS] Select top items from an EFA model ----------------
+# - Item relevance function -----------------------------------------------
+fun_efa_item_relevance <- function(
+    df_data
+    , dbl_weights = NULL
+    , efa_model
+){
+
+  # Arguments validation
+  stopifnot(
+    "'df_data' must be a data frame with numeric columns." =
+      all(
+        is.data.frame(df_data),
+        df_data %>%
+          map_lgl(is.numeric) %>%
+          any()
+      )
+  )
+
+  stopifnot(
+    "'dbl_weights' must be either NULL or a numeric vector the same length as the number of rows in 'df_data'." =
+      any(
+        is.null(dbl_weights),
+        all(
+          is.numeric(dbl_weights),
+          length(dbl_weights) ==
+            nrow(df_data)
+        )
+      )
+  )
+
+  stopifnot(
+    "'efa_model' must be a factor analysis object." =
+      any(
+        class(efa_model) == 'factanal'
+        , class(efa_model) == 'fa'
+        , class(efa_model) == 'principal'
+      )
+  )
+
+  # Data wrangling
+  df_data %>%
+    select(where(
+      is.numeric
+    )) -> df_data
+
+  # Item variance
+  df_data %>%
+    reframe(across(
+      .cols = everything()
+      ,.fns =
+        ~ wtd.var(
+          x = .x
+          , weights =
+            dbl_weights
+        )
+    )) %>%
+    pivot_longer(
+      cols = everything()
+      , names_to = 'item'
+      , values_to = 'variance'
+    ) -> df_items_var
+
+  rm(df_data)
+
+  # Get factor loadings
+  # Match items to factors
+  efa_model %>%
+    fun_ftools_factor_match() ->
+    df_factor_match
+
+  rm(efa_model)
+
+  # Assess item relevance as a function of
+  # item purity and captured variance
+  df_factor_match %>%
+    full_join(
+      df_items_var
+    ) %>%
+    as_tibble() ->
+    df_top_items
+
+  rm(df_factor_match)
+  rm(df_items_var)
+
+  df_top_items %>%
+    mutate(
+      purity_norm =
+        loading -
+        crossloadings
+      , purity_norm =
+        purity_norm -
+        min(purity_norm)
+      , purity_norm =
+        purity_norm /
+        max(purity_norm)
+      , relevance_norm =
+        (purity_norm ^ 2) *
+        sqrt(
+          variance /
+            sum(variance)
+        )
+      , relevance_norm =
+        relevance_norm /
+        max(relevance_norm)
+    ) -> df_top_items
+
+  # Output
+  return(df_top_items)
+
+}
+
 # - Top items function (heavy lifting) ----------------------------------------------------
 fun_efa_top_items_helper <- function(
     df_data
@@ -1515,66 +1626,19 @@ fun_efa_top_items_helper <- function(
       )
   ) -> int_items_total_vector
 
-  # Item variance
-  df_data %>%
-    reframe(across(
-      .cols = everything()
-      ,.fns =
-        ~ wtd.var(
-          x = .x
-          , weights =
-            dbl_weights
-        )
-    )) %>%
-    pivot_longer(
-      cols = everything()
-      , names_to = 'item'
-      , values_to = 'variance'
-    ) -> df_items_var
+  # Item relevance
+  fun_efa_item_relevance(
+    df_data =
+      df_data
+    , dbl_weights =
+      dbl_weights
+    , efa_model =
+      efa_model
+  ) -> df_top_items
 
   rm(df_data)
-
-  # Get factor loadings
-  # Match items to factors
-  efa_model %>%
-    fun_ftools_factor_match() ->
-    df_factor_match
-
+  rm(dbl_weights)
   rm(efa_model)
-
-  # Assess item relevance as a function of
-  # item purity and captured variance
-  df_factor_match %>%
-    full_join(
-      df_items_var
-    ) %>%
-    as_tibble() ->
-    df_top_items
-
-  rm(df_factor_match)
-  rm(df_items_var)
-
-  df_top_items %>%
-    mutate(
-      purity_norm =
-        loading -
-        crossloadings
-      , purity_norm =
-        purity_norm -
-        min(purity_norm)
-      , purity_norm =
-        purity_norm /
-        max(purity_norm)
-      , relevance_norm =
-        (purity_norm ^ 2) *
-        sqrt(
-          variance /
-            sum(variance)
-        )
-      , relevance_norm =
-        relevance_norm /
-        max(relevance_norm)
-    ) -> df_top_items
 
   # Top items helper function
   fun_top_items <- function(
@@ -1692,6 +1756,274 @@ fun_efa_top_items_helper <- function(
   return(list_top_items)
 
 }
+
+# # - Top items function (heavy lifting) ----------------------------------------------------
+# fun_efa_top_items_helper <- function(
+    #     df_data
+#     , dbl_weights = NULL
+#     , efa_model
+#     , int_items_total_vector = 50
+#     , lgc_uneven_factors = F
+#     , int_min_items_factor = 3
+# ){
+#
+#   # Arguments validation
+#   stopifnot(
+#     "'df_data' must be a data frame with numeric columns." =
+#       all(
+#         is.data.frame(df_data),
+#         df_data %>%
+#           map_lgl(is.numeric) %>%
+#           any()
+#       )
+#   )
+#
+#   stopifnot(
+#     "'dbl_weights' must be either NULL or a numeric vector the same length as the number of rows in 'df_data'." =
+#       any(
+#         is.null(dbl_weights),
+#         all(
+#           is.numeric(dbl_weights),
+#           length(dbl_weights) ==
+#             nrow(df_data)
+#         )
+#       )
+#   )
+#
+#   stopifnot(
+#     "'efa_model' must be a factor analysis object." =
+#       any(
+#         class(efa_model) == 'factanal'
+#         , class(efa_model) == 'fa'
+#         , class(efa_model) == 'principal'
+#       )
+#   )
+#
+#   stopifnot(
+#     "'int_items_total_vector' must be an integer." =
+#       is.numeric(int_items_total_vector)
+#   )
+#
+#   stopifnot(
+#     "'int_min_items_factor' must be an integer." =
+#       is.numeric(int_min_items_factor)
+#   )
+#
+#   stopifnot(
+#     "'lgc_uneven_factors' must be either TRUE or FALSE." =
+#       all(
+#         is.logical(lgc_uneven_factors),
+#         !is.na(lgc_uneven_factors)
+#       )
+#   )
+#
+#   # Data wrangling
+#   ceiling(int_items_total_vector) -> int_items_total_vector
+#
+#   int_min_items_factor[[1]] -> int_min_items_factor
+#   ceiling(int_min_items_factor) -> int_min_items_factor
+#
+#   df_data %>%
+#     select(where(
+#       is.numeric
+#     )) -> df_data
+#
+#   # Name models
+#   set_names(
+#     int_items_total_vector
+#     , paste0(
+#       'EFA_'
+#       , efa_model$rotation
+#       , '_'
+#       , efa_model$factors
+#       , 'factors'
+#       , '_'
+#       , int_items_total_vector
+#       , 'items'
+#     ) %>%
+#       str_replace(
+#         '1factors'
+#         , '1factor'
+#       )
+#   ) -> int_items_total_vector
+#
+#   # Item variance
+#   df_data %>%
+#     reframe(across(
+#       .cols = everything()
+#       ,.fns =
+#         ~ wtd.var(
+#           x = .x
+#           , weights =
+#             dbl_weights
+#         )
+#     )) %>%
+#     pivot_longer(
+#       cols = everything()
+#       , names_to = 'item'
+#       , values_to = 'variance'
+#     ) -> df_items_var
+#
+#   rm(df_data)
+#
+#   # Get factor loadings
+#   # Match items to factors
+#   efa_model %>%
+#     fun_ftools_factor_match() ->
+#     df_factor_match
+#
+#   rm(efa_model)
+#
+#   # Assess item relevance as a function of
+#   # item purity and captured variance
+#   df_factor_match %>%
+#     full_join(
+#       df_items_var
+#     ) %>%
+#     as_tibble() ->
+#     df_top_items
+#
+#   rm(df_factor_match)
+#   rm(df_items_var)
+#
+#   df_top_items %>%
+#     mutate(
+#       purity_norm =
+#         loading -
+#         crossloadings
+#       , purity_norm =
+#         purity_norm -
+#         min(purity_norm)
+#       , purity_norm =
+#         purity_norm /
+#         max(purity_norm)
+#       , relevance_norm =
+#         (purity_norm ^ 2) *
+#         sqrt(
+#           variance /
+#             sum(variance)
+#         )
+#       , relevance_norm =
+#         relevance_norm /
+#         max(relevance_norm)
+#     ) -> df_top_items
+#
+#   # Top items helper function
+#   fun_top_items <- function(
+    #     df_top_items
+#     , int_items
+#     , lgc_uneven_factors
+#   ){
+#
+#     if(lgc_uneven_factors){
+#
+#       # Get min items from each factor
+#       df_top_items %>%
+#         group_by(factor) %>%
+#         arrange(desc(
+#           relevance_norm
+#         )) %>%
+#         slice_head(
+#           n = int_min_items_factor
+#         ) %>%
+#         pull(item) -> chr_items
+#
+#       # Get remaining items
+#       df_top_items %>%
+#         filter(!(
+#           item %in%
+#             chr_items
+#         )) %>%
+#         arrange(desc(
+#           relevance_norm
+#         )) %>%
+#         slice_head(
+#           n = max(
+#             int_items -
+#               length(chr_items)
+#             , 0
+#           )) %>%
+#         pull(item) %>%
+#         c(chr_items) -> chr_items
+#
+#       df_top_items %>%
+#         filter(
+#           item %in%
+#             chr_items
+#         ) %>%
+#         group_by(factor) %>%
+#         mutate(
+#           nitems = n()
+#         ) %>%
+#         ungroup() %>%
+#         relocate(
+#           factor
+#           , nitems
+#           , item
+#         ) %>%
+#         slice(str_order(
+#           factor
+#           , numeric = T
+#         )) -> df_top_items
+#
+#     } else {
+#
+#       df_top_items %>%
+#         mutate(
+#           nitems =
+#             int_items /
+#             length(unique(
+#               factor
+#             ))
+#           , nitems =
+#             floor(nitems)
+#           , nitems =
+#             pmax(
+#               nitems
+#               , int_min_items_factor
+#             )
+#         ) %>%
+#         group_by(factor) %>%
+#         arrange(desc(
+#           relevance_norm
+#         )) %>%
+#         slice_head(
+#           n = first(.$nitems)
+#         ) %>%
+#         relocate(
+#           factor
+#           , nitems
+#           , item
+#         ) -> df_top_items
+#
+#     }
+#
+#   }
+#
+#   # Select top items for each element in int_items_total_vector
+#   map(
+#     int_items_total_vector
+#     , ~ fun_top_items(
+#       df_top_items = df_top_items
+#       , int_items = .x
+#       , lgc_uneven_factors =
+#         lgc_uneven_factors
+#     )
+#   ) -> list_top_items
+#
+#   # If only one level, return data frame
+#   if(length(list_top_items) == 1){
+#
+#     list_top_items %>%
+#       bind_rows() ->
+#       list_top_items
+#
+#   }
+#
+#   # Output
+#   return(list_top_items)
+#
+# }
 
 # - Top items function (wrapper with try catch) ----------------------------------------------------
 fun_efa_top_items <- function(
