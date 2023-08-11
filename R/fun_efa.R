@@ -1722,6 +1722,7 @@ fun_efa_top_items_helper <- function(
         slice_head(
           n = first(.$nitems)
         ) %>%
+        ungroup() %>%
         relocate(
           factor
           , nitems
