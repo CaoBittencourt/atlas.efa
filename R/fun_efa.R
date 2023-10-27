@@ -1234,7 +1234,7 @@ fun_efa_vfa_helper <- function(
     mutate(
       model =
         paste0(
-          'EFA_'
+          'efa_'
           , rotation
           , '_'
           , nfactors
@@ -1611,7 +1611,7 @@ fun_efa_top_items_helper <- function(
   set_names(
     int_items_total_vector
     , paste0(
-      'EFA_'
+      'efa_'
       , efa_model$rotation
       , '_'
       , efa_model$factors
@@ -1833,7 +1833,7 @@ fun_efa_top_items_helper <- function(
 #   set_names(
 #     int_items_total_vector
 #     , paste0(
-#       'EFA_'
+#       'efa_'
 #       , efa_model$rotation
 #       , '_'
 #       , efa_model$factors

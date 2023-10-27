@@ -1,7 +1,7 @@
 Package: atlas.efa
 Type: Package
 Title: Automated Exploratory Factor Analysis
-Version: 2.1.0
+Version: 2.1.1
 Author: Cao Bittencourt
 Maintainer: Cao Bittencourt <caobittencourt@gmail.com>
 Description: This package contains a series of functions to streamline and automate most or all of Exploratory Factor Analysis (EFA) procedures.
