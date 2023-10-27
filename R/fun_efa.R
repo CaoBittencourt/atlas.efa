@@ -1243,7 +1243,7 @@ fun_efa_vfa_helper <- function(
       , model =
         str_replace(
           model
-          , '1factors'
+          , '^1factors'
           , '1factor'
         )
     ) -> df_models
@@ -1621,7 +1621,7 @@ fun_efa_top_items_helper <- function(
       , 'items'
     ) %>%
       str_replace(
-        '1factors'
+        '^1factors'
         , '1factor'
       )
   ) -> int_items_total_vector
@@ -1843,7 +1843,7 @@ fun_efa_top_items_helper <- function(
 #       , 'items'
 #     ) %>%
 #       str_replace(
-#         '1factors'
+#         '^1factors'
 #         , '1factor'
 #       )
 #   ) -> int_items_total_vector
